@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'CertiCheck - Document Verification',
+  title: 'Certicheck by NETCAMPUS - Document Verification',
   description: 'AI-powered document analysis and forgery detection.',
 };
 
