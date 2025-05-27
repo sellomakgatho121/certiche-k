@@ -1,17 +1,20 @@
 import type { Metadata } from 'next';
+// Ensure correct import from next/font/google for Geist
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import CertiCheckHeader from '@/components/layout/certicheck-header';
 
 const geistSans = Geist({
-  variable: '--font-geist-sans',
+  variable: '--font-geist-sans', // This defines the CSS variable name
   subsets: ['latin'],
+  // display: 'swap', // Optional: for font display strategy
 });
 
 const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+  variable: '--font-geist-mono', // This defines the CSS variable name
   subsets: ['latin'],
+  // display: 'swap', // Optional
 });
 
 export const metadata: Metadata = {
@@ -25,8 +28,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+      {/* Apply the font variable classes to <html> to make CSS variables available */}
+      <body className={'font-sans antialiased'}>
+        {/* Use Tailwind's font-sans which will now map to Geist Sans */}
         <CertiCheckHeader />
         <main>{children}</main>
         <Toaster />
