@@ -31,9 +31,9 @@ const AnomalySchema = z.object({
 });
 
 const AnalyzeDocumentOutputSchema = z.object({
-  isAuthentic: z.boolean().describe('A boolean indicating whether the document (or set of documents) is likely authentic. This should be false if significant anomalies are found in any of the documents OR if analysis is severely hindered by quality, making verification impossible (state this reason clearly in summary).'),
+  isAuthentic: z.boolean().describe('A boolean indicating whether the document (or set of documents) is likely authentic. This should be false if significant anomalies are found *in the content* of any of the documents OR if analysis of critical *content* is severely hindered by image quality, making verification impossible (state this reason clearly in summary).'),
   anomalies: z.array(AnomalySchema).describe('A list of anomalies detected in the document(s). Even if the document(s) are deemed authentic, list any minor irregularities or benign scan artifacts. If multiple documents are present, ensure anomalies clearly state which document they pertain to.'),
-  summary: z.string().describe('A concise summary of the analysis, highlighting key findings for each document if multiple are present, overall authenticity assessment, and crucially, any limitations due to image quality. Explicitly state if low quality prevents full verification rather than implying forgery.'),
+  summary: z.string().describe('A concise summary of the analysis, highlighting key findings for each document if multiple are present, overall authenticity assessment, and crucially, any limitations due to image quality impacting *content verification*. Explicitly state if low quality prevents full *content verification* rather than implying content forgery.'),
   identifiedOrConfirmedDocumentType: z.string().describe('The document type(s) identified or confirmed by the AI. If a single document type was provided by the user and confirmed, list that. If the user did not provide a type, or if multiple documents are detected in the image, list all identified types (e.g., "Driver\'s License, Utility Bill, Passport", or "Unknown Document Type" if identification is not possible).'),
 });
 export type AnalyzeDocumentOutput = z.infer<typeof AnalyzeDocumentOutputSchema>;
@@ -46,7 +46,7 @@ const prompt = ai.definePrompt({
   name: 'analyzeDocumentPrompt',
   input: {schema: AnalyzeDocumentInputSchema},
   output: {schema: AnalyzeDocumentOutputSchema},
-  prompt: `You are an expert forensic document examiner with a specialization in detecting highly sophisticated forgeries. Your task is to perform a meticulous analysis of the provided document(s) in the image.
+  prompt: `You are an expert forensic document examiner with a specialization in detecting highly sophisticated forgeries. Your task is to perform a meticulous analysis of the provided document(s) in the image, **focusing primarily on the document's content and structure.**
 
   {{#if documentType}}
   User-Provided Document Type (may refer to one or all documents if multiple are present): {{{documentType}}}
@@ -66,34 +66,34 @@ const prompt = ai.definePrompt({
           **AI Identification Required (Primary Task):** The user has NOT provided a document type. Your first step is to carefully examine the document image and attempt to identify all distinct document types present. Populate the \`identifiedOrConfirmedDocumentType\` field accordingly. If you cannot reliably identify any types, state "Unknown Document Type(s)".
       *   {{/if}}
 
-  2.  **Leverage Identified/Confirmed Document Type(s):** For each document identified (as listed in \`identifiedOrConfirmedDocumentType\`), you MUST tailor your analysis. Consider specific expected features, layouts, security elements (if applicable, like holograms for IDs), common content, typical paper/font styles, and known areas of scrutiny for *each specific document type*.
+  2.  **Leverage Identified/Confirmed Document Type(s):** For each document identified (as listed in \`identifiedOrConfirmedDocumentType\`), you MUST tailor your analysis. Consider specific expected *content*, features, layouts, security elements (if applicable, like holograms for IDs), common content, typical paper/font styles, and known areas of scrutiny for *each specific document type*.
       *   For example, if you identify a "Passport," a "Driver's License," AND a "Utility Bill":
           *   Passport/Driver's License: Scrutinize photo integration, holographic overlays, MRZ codes, microprinting, data consistency (birth date vs. issue/expiry).
-          *   Utility Bill: Check company branding, consistent layouts for addresses/account numbers, font usage for alterations.
+          *   Utility Bill: Check company branding, consistent layouts for addresses/account numbers, font usage for alterations of *content*.
       *   If \`identifiedOrConfirmedDocumentType\` lists multiple types, your analysis must address each.
 
-  3.  **Scrutinize with Extreme Detail:** Assume that forgeries can be very subtle. Look for minute inconsistencies in each document.
+  3.  **Scrutinize Content with Extreme Detail:** Assume that forgeries can be very subtle. Look for minute inconsistencies in *each document's content and structure*.
 
-  4.  **Authenticity Assessment (Overall and Per Document if Possible):** Based on your comprehensive analysis of all documents, determine overall authenticity. Set \`isAuthentic\` to \`false\` if any document has medium/high severity anomalies indicative of forgery. If image quality severely hinders analysis of critical features on *any* document, set \`isAuthentic\` to \`false\` and clearly state in the summary that this is due to *inability to verify that specific document*, not a confirmed forgery.
+  4.  **Authenticity Assessment (\`isAuthentic\` - Overall and Per Document if Possible):** Based on your comprehensive analysis of all documents, determine overall authenticity. Set \`isAuthentic\` to \`false\` if any document has medium/high severity anomalies *indicative of content forgery or significant content discrepancies*. If image quality severely hinders analysis of critical *content features* on *any* document, making content verification impossible, set \`isAuthentic\` to \`false\` and clearly state in the summary that this is due to *inability to verify that specific document's content*, not a confirmed content forgery. **Your primary basis for \`isAuthentic\` should be the integrity of the document's content.**
 
-  5.  **Anomaly Detection (Link to Specific Document):** Identify and list ALL anomalies for ALL documents. For each anomaly:
-      *   \`anomalyType\`: Specific category (e.g., "Signature Mismatch", "Altered Text").
-      *   \`description\`: Detailed explanation. If it's a common scan artifact, explain its benign nature.
+  5.  **Anomaly Detection (Link to Specific Document):** Identify and list ALL anomalies for ALL documents, focusing on those related to *content and structure*. For each anomaly:
+      *   \`anomalyType\`: Specific category (e.g., "Signature Mismatch", "Altered Text", "Font Inconsistency", "Image Manipulation").
+      *   \`description\`: Detailed explanation. If it's a common scan artifact that *does not obscure or alter content*, explain its benign nature.
       *   \`location\`: **Crucially, if multiple documents are present, specify WHICH document the anomaly pertains to** (e.g., "Driver's License: Signature Area", "Utility Bill: Date Field", "Top-left Document: Watermark").
-      *   \`severity\`: 'low', 'medium', or 'high'. Benign scan artifacts are 'low'.
+      *   \`severity\`: 'low', 'medium', or 'high'. Benign scan artifacts *not impacting content assessment* are 'low'.
 
-  6.  **Consider Advanced Techniques:** Be aware of advanced forgery methods relevant to the identified document types.
+  6.  **Consider Advanced Content Manipulation Techniques:** Be aware of advanced forgery methods relevant to the identified document types and their *content*.
 
-  7.  **Cross-Verification (Conceptual):** Note elements that would ideally be cross-verified for each document.
+  7.  **Cross-Verification (Conceptual):** Note *content elements* that would ideally be cross-verified for each document.
 
-  Specific Considerations for Scanned Documents and Image Quality:
-  8.  **Scanned Document Artifacts:** Differentiate benign scanning artifacts (skew, dust, minor shadows, moiré patterns, resolution limits, uneven lighting) from actual manipulation. These common artifacts, by themselves, are NOT indicators of forgery. Focus analysis on inconsistencies *within each document's content* not attributable to scanning. Prioritize looking for inconsistencies *within the document's content itself* rather than over-penalizing the medium (the scan). Only flag scan-related issues as anomalies if unusually pronounced, obscuring critical information intentionally, or combined with content-based suspicions. Categorize pure scan artifacts as "Scan Artifact" with 'low' severity.
+  Specific Considerations for Scanned Documents and Image Quality (Relative to Content):
+  8.  **Scanned Document Artifacts vs. Content Issues:** Differentiate benign scanning artifacts (skew, dust, minor shadows, moiré patterns, resolution limits, uneven lighting) from actual *content manipulation*. These common artifacts, by themselves, are NOT indicators of forgery and should NOT lead to an \`isAuthentic = false\` conclusion if the underlying *content* is clear and consistent. Focus analysis on inconsistencies *within each document's content itself* not attributable to scanning. Prioritize looking for inconsistencies *within the document's content itself* rather than over-penalizing the medium (the scan). Only flag scan-related issues as anomalies if unusually pronounced, obscuring critical *content information* intentionally, or combined with *content-based suspicions*. Categorize pure scan artifacts as "Scan Artifact" with 'low' severity.
 
-  9.  **Image Quality Impact (Per Document):** If image quality (poor lighting, angle, blur, low resolution) significantly hinders analysis of *any specific document*, state this in your summary and anomaly descriptions (linking the quality issue to the affected document). Detail obscured areas. Do NOT conclude a document is inauthentic solely due to poor image quality preventing verification. If analysis of a document is severely hindered, this contributes to overall \`isAuthentic\` being \`false\` due to inability to verify.
+  9.  **Image Quality Impact on Content Verification (Per Document):** If image quality (poor lighting, angle, blur, low resolution) significantly hinders analysis of critical *content features* of *any specific document*, state this in your summary and anomaly descriptions (linking the quality issue to the affected document). Detail obscured *content areas*. Do NOT conclude a document is inauthentic solely due to poor image quality preventing *content verification*. If *content analysis* of a document is severely hindered, this contributes to overall \`isAuthentic\` being \`false\` due to inability to verify its *content*.
 
-  10. **Summary (Address All Documents):** Provide a concise summary. If multiple documents were analyzed, briefly summarize findings for each. Highlight critical observations, your overall authenticity conclusion (considering all \`identifiedOrConfirmedDocumentType\`s), and explicitly mention limitations. If authenticity of any document cannot be confirmed due to quality, state this clearly.
+  10. **Summary (Address All Documents and Content Focus):** Provide a concise summary. If multiple documents were analyzed, briefly summarize *content findings* for each. Highlight critical *content observations*, your overall authenticity conclusion (considering all \`identifiedOrConfirmedDocumentType\`s), and explicitly mention limitations regarding *content verification* due to image quality. If authenticity of any document's *content* cannot be confirmed due to quality, state this clearly.
 
-  Even if documents seem legitimate, find any indication of manipulation. Maintain a critical mindset but differentiate clearly between capture artifacts and deliberate forgery for each document.
+  Even if documents seem legitimate, find any indication of *content manipulation*. Maintain a critical mindset but differentiate clearly between capture artifacts and deliberate *content forgery* for each document.
   Output in JSON format. Ensure \`identifiedOrConfirmedDocumentType\` accurately reflects all identified document types in the image.`,
 });
 
@@ -106,9 +106,9 @@ const analyzeDocumentFlow = ai.defineFlow(
   async (input) => {
     const {output} = await prompt(input);
 
-    if (output && typeof output.identifiedOrConfirmedDocumentType !== 'string' || !output.identifiedOrConfirmedDocumentType.trim()) {
+    if (output && (typeof output.identifiedOrConfirmedDocumentType !== 'string' || !output.identifiedOrConfirmedDocumentType.trim())) {
       // If AI fails to specify, or returns empty, use user input or mark as unknown
-      if (input.documentType) {
+      if (input.documentType && input.documentType !== '__AI_IDENTIFY__') {
         output.identifiedOrConfirmedDocumentType = `User specified: ${input.documentType} (AI did not confirm/specify further)`;
       } else {
         output.identifiedOrConfirmedDocumentType = 'Unknown Document Type(s) (AI failed to specify)';
@@ -117,3 +117,4 @@ const analyzeDocumentFlow = ai.defineFlow(
     return output!;
   }
 );
+
