@@ -22,20 +22,20 @@ const DetectForgeryInputSchema = z.object({
 export type DetectForgeryInput = z.infer<typeof DetectForgeryInputSchema>;
 
 const DetectForgeryOutputSchema = z.object({
-  isForged: z.boolean().describe('A boolean indicating whether the document is highly likely to be a forgery. This should be true if significant evidence of manipulation is found, or if critical areas cannot be verified due to severe image quality issues.'),
+  isForged: z.boolean().describe('A boolean indicating whether the document is highly likely to be a forgery. This should be true ONLY if specific, significant evidence of manipulation is found. It should NOT be true solely due to scan artifacts or poor image quality preventing verification.'),
   anomalies: z
     .array(z.string())
-    .describe('A detailed list of specific anomalies, inconsistencies, or signs of manipulation detected in the document. Each anomaly should be clearly described. Note if an anomaly is likely a benign scan artifact or if multiple documents are present.'),
+    .describe('A detailed list of specific anomalies, inconsistencies, or signs of manipulation detected in the document. Each anomaly should be clearly described. Differentiate between benign scan artifacts and actual suspicious findings. Note if multiple documents are present or if quality issues limit analysis.'),
   confidence: z
     .number()
     .min(0).max(1)
     .describe(
-      'A confidence score (0.0 to 1.0) indicating the likelihood of forgery. A score closer to 1.0 suggests a higher probability of forgery. This should be directly correlated with the severity and number of anomalies found, and potentially lowered if image quality hinders full analysis.'
+      'A confidence score (0.0 to 1.0) indicating the likelihood OF THE DOCUMENT BEING FORGED. A score closer to 1.0 suggests high probability of forgery based on strong, direct evidence of manipulation. Common scan artifacts or poor image quality alone (without other indicators of tampering) should result in a LOW confidence score for forgery (e.g., 0.0-0.3). If analysis is limited by quality, confidence in any assessment will be low; reflect this by keeping forgery confidence low unless manipulation is evident.'
     ),
   forgeryTechniquesSuspected: z
     .array(z.string())
     .optional()
-    .describe('A list of potential forgery techniques suspected (e.g., "Digital text alteration", "Signature lifting", "Pixel manipulation", "Font mismatch", "Artificial aging"). Include "Poor scan quality obscuring details" if applicable.'),
+    .describe('A list of potential forgery techniques suspected (e.g., "Digital text alteration", "Signature lifting"). Include "Poor image quality obscuring details" if applicable, but this alone should not imply forgery.'),
 });
 export type DetectForgeryOutput = z.infer<typeof DetectForgeryOutputSchema>;
 
@@ -47,29 +47,24 @@ const prompt = ai.definePrompt({
   name: 'detectForgeryPrompt',
   input: {schema: DetectForgeryInputSchema},
   output: {schema: DetectForgeryOutputSchema},
-  prompt: `You are a world-renowned forensic document examiner with unparalleled expertise in identifying even the most sophisticated forgeries. Your task is to conduct an exhaustive analysis of the provided document to uncover any signs of forgery or manipulation. Adopt a highly critical and investigative stance.
+  prompt: `You are a world-renowned forensic document examiner with unparalleled expertise in identifying even the most sophisticated forgeries. Your task is to conduct an exhaustive analysis of the provided document to uncover any signs of forgery or manipulation. Adopt a highly critical and investigative stance, but be precise in distinguishing between capture artifacts and deliberate forgery.
 
 Document: {{media url=documentDataUri}}
 
 Analysis Instructions:
-1.  **Assume Sophistication:** Do not assume the forgery is amateur. Look for signs of advanced techniques, including:
-    *   Digital alteration: Pixel inconsistencies, cloning artifacts, compression differences, unnatural edges.
-    *   Text manipulation: Inconsistent kerning, baseline shifts, font mismatches (even subtle), superimposed text.
-    *   Signature/Handwriting issues: Tremors (unnatural), patched or overwritten strokes, lifted signatures, unnatural pen pressure (if discernible).
-    *   Image/Seal tampering: Distortions, blurring around official seals or logos, inconsistent lighting.
-    *   Structural anomalies: Misalignments, unusual spacing, deviations from expected document templates.
-2.  **Identify Anomalies:** Detail every suspicious element or inconsistency. For each anomaly, explain why it is indicative of potential forgery. If an observation is likely a benign scan artifact (e.g., dust, slight skew), note it as such but still assess its potential to obscure information.
-3.  **Assess Forgery Likelihood:** Based on the evidence, determine if the document 'isForged'. This should be true if compelling evidence of manipulation is found. If critical areas are unverifiable due to extremely poor image quality, this may also lead to an 'isForged' conclusion (or very low confidence in authenticity).
-4.  **Confidence Score:** Provide a 'confidence' score from 0.0 (no evidence of forgery) to 1.0 (conclusive evidence of forgery). This score must reflect the strength and number of detected anomalies. A document with several medium-to-high severity anomalies should have a high confidence score. If image quality or other factors limit your analysis, this should temper your confidence.
-5.  **Suspected Techniques:** If forgery is suspected, list potential 'forgeryTechniquesSuspected' based on the observed anomalies. If poor image quality is a major factor, include "Poor image quality obscuring details" or similar.
+1.  **Assume Sophistication:** Do not assume the forgery is amateur. Look for signs of advanced techniques related to the document's content and structure.
+2.  **Identify Anomalies:** Detail every suspicious element or inconsistency. For each anomaly, explain why it is indicative of potential forgery. If an observation is likely a benign scan artifact (see point 6), note it as such and clarify it does NOT, on its own, indicate forgery.
+3.  **Assess Forgery Likelihood:** Based on concrete evidence of manipulation, determine if the document \`isForged\`. **\`isForged\` should ONLY be true if there are specific, identifiable signs of forgery related to the document's content or structure.** If critical areas are unverifiable due to extremely poor image quality *without other direct evidence of forgery*, \`isForged\` should be \`false\`, and the \`confidence\` score should reflect low certainty in *either* authenticity or forgery (e.g., a confidence score closer to 0.5 or lower if assessing forgery likelihood). The \`anomalies\` list must detail the quality issues preventing verification.
+4.  **Confidence Score:** Provide a \`confidence\` score (0.0 to 1.0) indicating the likelihood OF THE DOCUMENT BEING FORGED. A score closer to 1.0 suggests a high probability of forgery, based on *strong, direct evidence of manipulation*. A score closer to 0.0 suggests no direct evidence of forgery was found. **Common scan artifacts or poor image quality alone (without other specific indicators of tampering) should result in a LOW confidence score for forgery (e.g., 0.0-0.3).** If analysis is severely limited by quality, the confidence in *any* assessment (forged or not) will be low; reflect this by keeping the forgery confidence score low unless active manipulation is evident. The primary driver for a high confidence score must be the severity and number of *content-based* anomalies, not just scan issues.
+5.  **Suspected Techniques:** If forgery is suspected based on content manipulation, list potential \`forgeryTechniquesSuspected\`. If poor image quality is a major factor obscuring details, this can be noted, but it does not equate to a suspected forgery technique on its own.
 
 Specific Considerations for Scanned Documents and Image Quality:
-6.  **Scanned Document Artifacts:** Distinguish between common scanning artifacts (e.g., Moiré patterns, slight skew, scanner bed dust, typical scan resolution, uneven illumination from scanner light) and deliberate manipulation. A document being a scan does not automatically make it forged. Focus on inconsistencies *within* the document content itself that cannot be attributed to the scanning process. List these as anomalies, but clarify if they are likely benign artifacts.
-7.  **Multiple Documents in One Image:** If the image appears to contain multiple distinct documents (e.g., an ID card and a driver's license on one scan), note this in your 'anomalies' list or as a general observation. Attempt to assess if anomalies pertain to specific sub-documents or the way they are presented together. Your overall 'isForged' and 'confidence' should reflect the entire image provided.
-8.  **Impact of Image Quality:** If aspects like poor lighting, blur, obstructions, low resolution, or extreme angles significantly limit your ability to assess certain features, this *must* be reflected in your 'confidence' score and explicitly mentioned in the 'anomalies' list (e.g., "Details in photo area obscured by glare"). If the quality is too poor to make a reliable judgment on critical elements, state this clearly. Do not jump to a "forged" conclusion if the evidence is simply obscured by poor image quality, but acknowledge that authenticity cannot be confirmed.
-9.  **Angle and Lighting:** Specifically address if the angle of the scan/photo or poor/uneven lighting introduces distortions, shadows, or reflections that could be misinterpreted as tampering or could obscure genuine features. Explain how these factors affect your analysis.
+6.  **Scanned Document Artifacts:** It is imperative to distinguish between common, benign scanning artifacts and deliberate manipulation. Common artifacts include Moiré patterns, slight skew, scanner bed dust, typical scan resolution limitations, and uneven illumination. **These artifacts, in isolation, are NOT signs of forgery and should not contribute to an \`isForged\` conclusion or a high \`confidence\` score for forgery.** Focus your analysis on inconsistencies *within the document's content itself* that cannot be reasonably attributed to a standard scanning process. If you list scan artifacts, clearly state they are likely benign characteristics of scanning unless there's specific evidence to the contrary (e.g., obscuring information in a way that suggests intent).
+7.  **Multiple Documents in One Image:** If the image appears to contain multiple distinct documents, note this. Attempt to assess if anomalies pertain to specific sub-documents or the way they are presented together. Your overall \`isForged\` and \`confidence\` should reflect the entire image, focusing on evidence of tampering in any part.
+8.  **Impact of Image Quality:** If aspects like poor lighting, blur, obstructions, low resolution, or extreme angles significantly limit your ability to assess critical features, this *must* be documented in the \`anomalies\` list and significantly lower your \`confidence\` score for forgery. **Do NOT conclude \`isForged\` simply because image quality is poor.** Instead, report that authenticity of certain features (or the document overall) cannot be reliably confirmed due to these issues. The \`forgeryTechniquesSuspected\` field can include "Poor image quality obscuring details," but this should not be the sole basis for a high forgery confidence. Your primary goal is to detect active manipulation, not to penalize for imperfect image capture if no such manipulation is evident.
+9.  **Angle and Lighting:** Specifically address if the angle of the scan/photo or poor/uneven lighting introduces distortions, shadows, or reflections. Explain if these are typical for casual capture or if they seem to deliberately obscure, and how they affect your analysis. Benign capture issues should not lead to a high forgery score.
 
-Your goal is to be exceptionally thorough. Do not dismiss minor irregularities without consideration, as they can be part of a larger deceptive pattern. Clearly articulate the reasons for your assessment.
+Your goal is to be exceptionally thorough in finding *actual manipulation*. Do not dismiss minor content irregularities, but clearly differentiate them from benign capture/scan artifacts. Articulate the reasons for your assessment very clearly.
 Output your findings strictly in JSON format, adhering to the defined schema.
 `,
 });
@@ -93,4 +88,3 @@ const detectForgeryFlow = ai.defineFlow(
     return output!;
   }
 );
-
