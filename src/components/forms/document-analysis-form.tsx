@@ -1,3 +1,4 @@
+
 'use client';
 
 import type React from 'react';
@@ -6,11 +7,12 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/components/ui/input'; // Keep for other potential uses, but not for documentType
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import FileUploader from '@/components/shared/file-uploader';
 import { fileToDataUri } from '@/lib/file-utils';
@@ -18,6 +20,24 @@ import { handleAnalyzeDocumentAction } from '@/app/actions';
 import type { AnalyzeDocumentOutput } from '@/ai/flows/analyze-document';
 import DocumentAnalysisReport from '@/components/reports/document-analysis-report';
 import { Loader2, FileSearch } from 'lucide-react';
+
+const documentTypes = [
+  "Passport",
+  "Driver's License",
+  "National ID Card",
+  "Utility Bill",
+  "Bank Statement",
+  "Invoice",
+  "Contract",
+  "Birth Certificate",
+  "Academic Transcript",
+  "Medical Report",
+  "Proof of Address",
+  "Lease Agreement",
+  "Insurance Policy",
+  "Tax Document",
+  "Other",
+];
 
 const formSchema = z.object({
   documentFile: z.instanceof(File, { message: "Document file is required." })
@@ -109,9 +129,20 @@ export default function DocumentAnalysisForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel htmlFor="documentType">Document Type</FormLabel>
-                  <FormControl>
-                    <Input id="documentType" placeholder="e.g., Invoice, Passport, Contract" {...field} />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger id="documentType">
+                        <SelectValue placeholder="Select a document type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {documentTypes.map((docType) => (
+                        <SelectItem key={docType} value={docType}>
+                          {docType}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
