@@ -7,9 +7,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input'; // Keep for other potential uses, but not for documentType
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -39,10 +37,12 @@ const documentTypes = [
   "Other",
 ];
 
+const AI_IDENTIFY_VALUE = "__AI_IDENTIFY__";
+
 const formSchema = z.object({
   documentFile: z.instanceof(File, { message: "Document file is required." })
     .refine(file => file.size > 0, "Document file cannot be empty."),
-  documentType: z.string().min(1, "Document type is required."),
+  documentType: z.string().optional(),
   description: z.string().optional(),
 });
 
@@ -57,7 +57,7 @@ export default function DocumentAnalysisForm() {
   const form = useForm<DocumentAnalysisFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      documentType: '',
+      documentType: '', // Placeholder will be shown
       description: '',
     },
   });
@@ -69,9 +69,17 @@ export default function DocumentAnalysisForm() {
 
     try {
       const documentDataUri = await fileToDataUri(data.documentFile);
+      
+      let documentTypeToSend: string | undefined = undefined;
+      if (data.documentType && data.documentType !== AI_IDENTIFY_VALUE) {
+        documentTypeToSend = data.documentType;
+      }
+      // If data.documentType is '' (initial, untouched) or AI_IDENTIFY_VALUE, 
+      // documentTypeToSend remains undefined.
+
       const result = await handleAnalyzeDocumentAction({
         documentDataUri,
-        documentType: data.documentType,
+        documentType: documentTypeToSend,
         description: data.description,
       });
       setAnalysisResult(result);
@@ -100,7 +108,8 @@ export default function DocumentAnalysisForm() {
             Document Analysis
         </CardTitle>
         <CardDescription>
-          Upload a document to analyze its authenticity and identify potential anomalies.
+          Upload a document to analyze its authenticity and identify potential anomalies. 
+          Optionally, specify the document type.
         </CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -128,14 +137,18 @@ export default function DocumentAnalysisForm() {
               name="documentType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel htmlFor="documentType">Document Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormLabel htmlFor="documentType-analysis">Document Type (Optional)</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                  >
                     <FormControl>
-                      <SelectTrigger id="documentType">
-                        <SelectValue placeholder="Select a document type" />
+                      <SelectTrigger id="documentType-analysis">
+                        <SelectValue placeholder="Select document type (optional)" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value={AI_IDENTIFY_VALUE}><em>None / Let AI Identify</em></SelectItem>
                       {documentTypes.map((docType) => (
                         <SelectItem key={docType} value={docType}>
                           {docType}
@@ -144,6 +157,9 @@ export default function DocumentAnalysisForm() {
                     </SelectContent>
                   </Select>
                   <FormMessage />
+                  <p className="text-xs text-muted-foreground pt-1">
+                    If unsure, leave blank or select "None" for AI to attempt identification.
+                  </p>
                 </FormItem>
               )}
             />
@@ -184,3 +200,5 @@ export default function DocumentAnalysisForm() {
     </Card>
   );
 }
+
+    
