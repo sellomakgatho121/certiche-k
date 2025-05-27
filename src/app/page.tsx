@@ -78,10 +78,8 @@ export default function HomePage() {
       {/* Main Application Content */}
       <div
         className={`container mx-auto px-4 py-8 transition-opacity duration-1000 ease-in-out
-          ${isMainContentVisible ? 'opacity-100' : 'opacity-0'}
-          ${animationState !== 'done' ? 'invisible' : ''} 
+          ${isMainContentVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}
           `}
-          // 'invisible' hides it without affecting layout until 'done'
       >
         {shouldRenderMainContent && ( // Conditionally render to optimize initial load
           <Tabs defaultValue="analyze" className="w-full">
@@ -105,4 +103,3 @@ export default function HomePage() {
     </>
   );
 }
-
