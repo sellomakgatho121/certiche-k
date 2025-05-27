@@ -36,6 +36,8 @@ const documentTypes = [
   "Other",
 ];
 
+const AI_IDENTIFY_VALUE = "__AI_IDENTIFY__";
+
 const formSchema = z.object({
   documentFile: z.instanceof(File, { message: "Document file is required." })
     .refine(file => file.size > 0, "Document file cannot be empty."),
@@ -53,7 +55,7 @@ export default function ForgeryDetectionForm() {
   const form = useForm<ForgeryDetectionFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      documentType: '',
+      documentType: '', // This will show the placeholder initially
     }
   });
 
@@ -64,9 +66,17 @@ export default function ForgeryDetectionForm() {
 
     try {
       const documentDataUri = await fileToDataUri(data.documentFile);
+      
+      let documentTypeToSend: string | undefined = undefined;
+      if (data.documentType && data.documentType !== AI_IDENTIFY_VALUE) {
+        documentTypeToSend = data.documentType;
+      }
+      // If data.documentType is '' (initial, untouched) or AI_IDENTIFY_VALUE, 
+      // documentTypeToSend remains undefined.
+
       const result = await handleDetectForgeryAction({ 
         documentDataUri,
-        documentType: data.documentType || undefined, // Pass undefined if empty string
+        documentType: documentTypeToSend, 
       });
       setDetectionResult(result);
       toast({
@@ -124,14 +134,17 @@ export default function ForgeryDetectionForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel htmlFor="documentType-forgery">Document Type (Optional)</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value} // field.value will be '' initially
+                  >
                     <FormControl>
                       <SelectTrigger id="documentType-forgery">
                         <SelectValue placeholder="Select document type (optional)" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value=""><em>None / Let AI Identify</em></SelectItem>
+                      <SelectItem value={AI_IDENTIFY_VALUE}><em>None / Let AI Identify</em></SelectItem>
                       {documentTypes.map((docType) => (
                         <SelectItem key={docType} value={docType}>
                           {docType}
@@ -141,7 +154,7 @@ export default function ForgeryDetectionForm() {
                   </Select>
                   <FormMessage />
                   <p className="text-xs text-muted-foreground pt-1">
-                    If unsure or if multiple documents, leave blank for AI to attempt identification.
+                    If unsure or if multiple documents, leave blank or select "None" for AI to attempt identification.
                   </p>
                 </FormItem>
               )}
