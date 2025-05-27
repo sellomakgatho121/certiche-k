@@ -1,3 +1,4 @@
+
 'use server';
 
 import { analyzeDocument, type AnalyzeDocumentInput, type AnalyzeDocumentOutput } from '@/ai/flows/analyze-document';
@@ -20,10 +21,14 @@ export async function handleAnalyzeDocumentAction(
 }
 
 export async function handleDetectForgeryAction(
-  input: DetectForgeryInput
+  input: DetectForgeryInput 
 ): Promise<DetectForgeryOutput> {
   try {
-    const result = await detectForgery(input);
+    // Ensure documentType is passed correctly, even if it's undefined
+    const result = await detectForgery({
+      documentDataUri: input.documentDataUri,
+      ...(input.documentType && { documentType: input.documentType }),
+    });
     if (!result) {
       throw new Error('Forgery detection failed to return a result.');
     }

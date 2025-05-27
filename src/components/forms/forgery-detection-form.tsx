@@ -1,3 +1,4 @@
+
 'use client';
 
 import type React from 'react';
@@ -8,6 +9,7 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import FileUploader from '@/components/shared/file-uploader';
 import { fileToDataUri } from '@/lib/file-utils';
@@ -16,9 +18,28 @@ import type { DetectForgeryOutput } from '@/ai/flows/detect-forgery';
 import ForgeryDetectionReport from '@/components/reports/forgery-detection-report';
 import { Loader2, ScanEye } from 'lucide-react';
 
+const documentTypes = [
+  "Passport",
+  "Driver's License",
+  "National ID Card",
+  "Utility Bill",
+  "Bank Statement",
+  "Invoice",
+  "Contract",
+  "Birth Certificate",
+  "Academic Transcript",
+  "Medical Report",
+  "Proof of Address",
+  "Lease Agreement",
+  "Insurance Policy",
+  "Tax Document",
+  "Other",
+];
+
 const formSchema = z.object({
   documentFile: z.instanceof(File, { message: "Document file is required." })
     .refine(file => file.size > 0, "Document file cannot be empty."),
+  documentType: z.string().optional(),
 });
 
 type ForgeryDetectionFormValues = z.infer<typeof formSchema>;
@@ -31,6 +52,9 @@ export default function ForgeryDetectionForm() {
 
   const form = useForm<ForgeryDetectionFormValues>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      documentType: '',
+    }
   });
 
   const onSubmit: SubmitHandler<ForgeryDetectionFormValues> = async (data) => {
@@ -40,7 +64,10 @@ export default function ForgeryDetectionForm() {
 
     try {
       const documentDataUri = await fileToDataUri(data.documentFile);
-      const result = await handleDetectForgeryAction({ documentDataUri });
+      const result = await handleDetectForgeryAction({ 
+        documentDataUri,
+        documentType: data.documentType || undefined, // Pass undefined if empty string
+      });
       setDetectionResult(result);
       toast({
         title: "Detection Complete",
@@ -67,7 +94,8 @@ export default function ForgeryDetectionForm() {
             Forgery Detection
         </CardTitle>
         <CardDescription>
-          Upload a document or image to detect potential signs of forgery or manipulation.
+          Upload a document or image to detect potential signs of forgery or manipulation. 
+          Optionally, specify the document type to aid analysis.
         </CardDescription>
       </CardHeader>
       <Form {...form}>
@@ -87,6 +115,34 @@ export default function ForgeryDetectionForm() {
                     />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="documentType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel htmlFor="documentType-forgery">Document Type (Optional)</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger id="documentType-forgery">
+                        <SelectValue placeholder="Select document type (optional)" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value=""><em>None / Let AI Identify</em></SelectItem>
+                      {documentTypes.map((docType) => (
+                        <SelectItem key={docType} value={docType}>
+                          {docType}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                  <p className="text-xs text-muted-foreground pt-1">
+                    If unsure or if multiple documents, leave blank for AI to attempt identification.
+                  </p>
                 </FormItem>
               )}
             />

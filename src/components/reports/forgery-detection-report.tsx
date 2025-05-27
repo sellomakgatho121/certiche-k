@@ -1,7 +1,8 @@
+
 import type { DetectForgeryOutput } from '@/ai/flows/detect-forgery';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { AlertTriangle, CheckCircle, XCircle, Percent, ListChecks } from 'lucide-react';
+import { AlertTriangle, CheckCircle, XCircle, Percent, ListChecks, FileType } from 'lucide-react';
 
 interface ForgeryDetectionReportProps {
   report: DetectForgeryOutput;
@@ -33,11 +34,25 @@ export default function ForgeryDetectionReport({ report }: ForgeryDetectionRepor
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
+            <FileType size={24} className="text-primary" />
+            Document Context
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-foreground">
+            <strong className="text-foreground/80">Identified/Confirmed Type:</strong> {report.identifiedOrConfirmedDocumentType || "Not specified"}
+          </p>
+        </CardContent>
+      </Card>
+      
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
             <Percent size={24} className="text-primary" />
-            Confidence Score
+            Confidence Score (for Forgery)
           </CardTitle>
           <CardDescription>
-            The confidence level regarding the forgery assessment.
+            The AI's confidence that the document is forged.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -46,7 +61,7 @@ export default function ForgeryDetectionReport({ report }: ForgeryDetectionRepor
             <span className="font-semibold text-primary">{confidencePercentage}%</span>
           </div>
            <p className="text-sm text-muted-foreground mt-1">
-            Confidence that the document is {report.isForged ? 'forged' : 'not forged / analysis inconclusive'}.
+            This score indicates the likelihood of forgery based on detected anomalies. A low score, especially with good quality images, suggests less evidence of tampering. Scan artifacts or poor image quality alone (without content manipulation) should result in a low confidence for forgery.
           </p>
         </CardContent>
       </Card>
@@ -66,6 +81,27 @@ export default function ForgeryDetectionReport({ report }: ForgeryDetectionRepor
             <ul className="list-disc list-inside space-y-1 text-foreground">
               {report.anomalies.map((anomaly, index) => (
                 <li key={index}>{anomaly}</li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {report.forgeryTechniquesSuspected && report.forgeryTechniquesSuspected.length > 0 && (
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle size={24} className="text-orange-500" />
+              Suspected Forgery Techniques
+            </CardTitle>
+            <CardDescription>
+              Potential methods of manipulation suspected by the AI.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="list-disc list-inside space-y-1 text-foreground">
+              {report.forgeryTechniquesSuspected.map((technique, index) => (
+                <li key={index}>{technique}</li>
               ))}
             </ul>
           </CardContent>
