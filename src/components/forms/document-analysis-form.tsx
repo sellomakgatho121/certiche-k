@@ -1,4 +1,3 @@
-
 'use client';
 
 import type React from 'react';
@@ -11,17 +10,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import FileUploader from '@/components/shared/file-uploader';
 import { fileToDataUri } from '@/lib/file-utils';
 import { handleAnalyzeDocumentAction } from '@/app/actions';
 import type { AnalyzeDocumentOutput } from '@/ai/flows/analyze-document';
 import DocumentAnalysisReport from '@/components/reports/document-analysis-report';
-import { Loader2, FileSearch } from 'lucide-react';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { FileSearch, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 const documentTypes = [
   "Passport",
-  "Driver's License",
+  "Driver's License", 
   "National ID Card",
   "Utility Bill",
   "Bank Statement",
@@ -57,7 +58,7 @@ export default function DocumentAnalysisForm() {
   const form = useForm<DocumentAnalysisFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      documentType: '', // Placeholder will be shown
+      documentType: '',
       description: '',
     },
   });
@@ -74,18 +75,21 @@ export default function DocumentAnalysisForm() {
       if (data.documentType && data.documentType !== AI_IDENTIFY_VALUE) {
         documentTypeToSend = data.documentType;
       }
-      // If data.documentType is '' (initial, untouched) or AI_IDENTIFY_VALUE, 
-      // documentTypeToSend remains undefined.
 
       const result = await handleAnalyzeDocumentAction({
         documentDataUri,
         documentType: documentTypeToSend,
         description: data.description,
       });
+      
       setAnalysisResult(result);
+      
       toast({
         title: "Analysis Complete",
-        description: "Document analysis finished successfully.",
+        description: result.isAuthentic 
+          ? "Document appears to be authentic" 
+          : "Potential issues detected in document",
+        variant: result.isAuthentic ? "default" : "destructive",
       });
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
@@ -100,105 +104,152 @@ export default function DocumentAnalysisForm() {
     }
   };
 
+  const resetForm = () => {
+    form.reset();
+    setAnalysisResult(null);
+    setError(null);
+  };
+
   return (
-    <Card className="w-full max-w-2xl mx-auto shadow-xl">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-xl">
-            <FileSearch className="text-primary"/>
+    <div className="space-y-6">
+      <Card className="w-full max-w-2xl mx-auto shadow-xl border-2">
+        <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10">
+          <CardTitle className="flex items-center gap-3 text-xl">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <FileSearch className="text-primary h-6 w-6"/>
+            </div>
             Document Analysis
-        </CardTitle>
-        <CardDescription>
-          Upload a document to analyze its authenticity and identify potential anomalies. 
-          Optionally, specify the document type.
-        </CardDescription>
-      </CardHeader>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-6">
-            <FormField
-              control={form.control}
-              name="documentFile"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel htmlFor="documentFile-analysis">Document File</FormLabel>
-                  <FormControl>
-                    <FileUploader
-                      id="documentFile-analysis"
-                      onFileSelect={(file) => field.onChange(file)}
-                      acceptedFileTypes="image/*,.pdf,.doc,.docx,.txt"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="documentType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel htmlFor="documentType-analysis">Document Type (Optional)</FormLabel>
-                  <Select 
-                    onValueChange={field.onChange} 
-                    defaultValue={field.value}
-                  >
+          </CardTitle>
+          <CardDescription className="text-base">
+            Upload a document to analyze its authenticity and identify potential anomalies. 
+            Our AI will examine the document structure, content, and formatting for signs of tampering.
+          </CardDescription>
+        </CardHeader>
+        
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <CardContent className="space-y-6 pt-6">
+              <FormField
+                control={form.control}
+                name="documentFile"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-base font-medium">Document File</FormLabel>
                     <FormControl>
-                      <SelectTrigger id="documentType-analysis">
-                        <SelectValue placeholder="Select document type (optional)" />
-                      </SelectTrigger>
+                      <FileUploader
+                        id="documentFile-analysis"
+                        onFileSelect={(file) => field.onChange(file)}
+                        acceptedFileTypes="image/*,.pdf,.doc,.docx,.txt"
+                        maxSize={10}
+                      />
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value={AI_IDENTIFY_VALUE}><em>None / Let AI Identify</em></SelectItem>
-                      {documentTypes.map((docType) => (
-                        <SelectItem key={docType} value={docType}>
-                          {docType}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="documentType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-base font-medium">Document Type (Optional)</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger id="documentType-analysis" className="h-11">
+                          <SelectValue placeholder="Select document type or let AI identify" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={AI_IDENTIFY_VALUE}>
+                          <em>None / Let AI Identify</em>
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                  <p className="text-xs text-muted-foreground pt-1">
-                    If unsure, leave blank or select "None" for AI to attempt identification.
-                  </p>
-                </FormItem>
+                        {documentTypes.map((docType) => (
+                          <SelectItem key={docType} value={docType}>
+                            {docType}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    <p className="text-sm text-muted-foreground">
+                      Specifying the document type helps improve analysis accuracy. Leave blank for automatic detection.
+                    </p>
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-base font-medium">Additional Context (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        id="description"
+                        placeholder="Provide any relevant context, specific concerns, or areas you'd like us to focus on during analysis..."
+                        className="min-h-[100px] resize-none"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+            
+            <CardFooter className="flex flex-col items-stretch gap-4 bg-muted/30">
+              <div className="flex gap-3">
+                <Button 
+                  type="submit" 
+                  disabled={isLoading || !form.watch('documentFile')} 
+                  className="flex-1 h-11"
+                >
+                  {isLoading ? (
+                    <>
+                      <LoadingSpinner size="sm" className="mr-2" />
+                      Analyzing Document...
+                    </>
+                  ) : (
+                    <>
+                      <FileSearch className="mr-2 h-4 w-4" />
+                      Analyze Document
+                    </>
+                  )}
+                </Button>
+                
+                {(analysisResult || error) && (
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={resetForm}
+                    className="h-11"
+                  >
+                    New Analysis
+                  </Button>
+                )}
+              </div>
+              
+              {error && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
               )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel htmlFor="description">Optional Description</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      id="description"
-                      placeholder="Provide any relevant context or specific areas to focus on."
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-          <CardFooter className="flex flex-col items-stretch gap-4">
-            <Button type="submit" disabled={isLoading} className="w-full">
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Analyzing...
-                </>
-              ) : (
-                'Analyze Document'
-              )}
-            </Button>
-            {error && <p className="text-sm text-destructive text-center">{error}</p>}
-          </CardFooter>
-        </form>
-      </Form>
-      {analysisResult && <DocumentAnalysisReport report={analysisResult} />}
-    </Card>
+            </CardFooter>
+          </form>
+        </Form>
+      </Card>
+
+      {analysisResult && (
+        <div className="w-full max-w-2xl mx-auto">
+          <DocumentAnalysisReport report={analysisResult} />
+        </div>
+      )}
+    </div>
   );
 }
-
-    
