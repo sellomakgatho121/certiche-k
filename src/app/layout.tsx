@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import CertiCheckHeader from '@/components/layout/certicheck-header';
+import { ThemeProvider } from '@/components/shared/theme-provider';
 
 const geistSans = Geist({
   subsets: ['latin'],
@@ -26,9 +27,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.className} ${geistMono.className}`}>
       <body className={'font-sans antialiased'}>
-        <CertiCheckHeader />
-        <main>{children}</main>
-        <Toaster />
+        <ThemeProvider>
+          <CertiCheckHeader />
+          <main>{children}</main>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

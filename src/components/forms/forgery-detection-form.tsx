@@ -12,12 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import FileUploader from '@/components/shared/file-uploader';
-import { fileToDataUri } from '@/lib/file-utils';
+import { fileToOptimizedDataUri } from '@/lib/file-utils';
 import { handleDetectForgeryAction } from '@/app/actions';
 import type { DetectForgeryOutput } from '@/ai/flows/detect-forgery';
 import ForgeryDetectionReport from '@/components/reports/forgery-detection-report';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { ScanEye, AlertTriangle, Shield } from 'lucide-react';
+import { useLocalHistory } from '@/hooks/use-local-history';
 
 const documentTypes = [
   "Passport",
@@ -52,6 +53,7 @@ export default function ForgeryDetectionForm() {
   const [detectionResult, setDetectionResult] = useState<DetectForgeryOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { addHistory } = useLocalHistory();
 
   const form = useForm<ForgeryDetectionFormValues>({
     resolver: zodResolver(formSchema),
@@ -66,7 +68,7 @@ export default function ForgeryDetectionForm() {
     setError(null);
 
     try {
-      const documentDataUri = await fileToDataUri(data.documentFile);
+      const documentDataUri = await fileToOptimizedDataUri(data.documentFile, { maxDimension: 2200, quality: 0.9 });
       
       let documentTypeToSend: string | undefined = undefined;
       if (data.documentType && data.documentType !== AI_IDENTIFY_VALUE) {
@@ -79,6 +81,15 @@ export default function ForgeryDetectionForm() {
       });
       
       setDetectionResult(result);
+
+      addHistory({
+        kind: 'forgery',
+        createdAt: Date.now(),
+        summary: result.isForged ? 'Potential forgery detected' : 'No clear forgery detected',
+        documentType: result.identifiedOrConfirmedDocumentType,
+        statusLabel: result.isForged ? 'Suspected Forgery' : 'Appears Genuine',
+        payload: result,
+      });
       
       toast({
         title: "Detection Complete",
@@ -137,6 +148,7 @@ export default function ForgeryDetectionForm() {
                         onFileSelect={(file) => field.onChange(file)}
                         acceptedFileTypes="image/*,.pdf"
                         maxSize={10}
+                        className=""
                       />
                     </FormControl>
                     <FormMessage />

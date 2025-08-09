@@ -14,6 +14,8 @@ interface FileUploaderProps {
   id?: string;
   maxSize?: number; // in MB
   className?: string;
+  enablePaste?: boolean;
+  capture?: boolean;
 }
 
 export default function FileUploader({ 
@@ -21,12 +23,15 @@ export default function FileUploader({
   acceptedFileTypes = "image/*,.pdf,.doc,.docx,.txt", 
   id = "file-upload",
   maxSize = 10,
-  className
+  className,
+  enablePaste = true,
+  capture = false,
 }: FileUploaderProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const validateFile = (file: File): string | null => {
     // Check file size
@@ -114,8 +119,24 @@ export default function FileUploader({
     fileInputRef.current?.click();
   };
 
+  const handlePaste: React.ClipboardEventHandler<HTMLDivElement> = (e) => {
+    if (!enablePaste) return;
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind === 'file') {
+        const file = item.getAsFile();
+        if (file) {
+          handleFileChange(file);
+          break;
+        }
+      }
+    }
+  };
+
   return (
-    <div className={cn("space-y-4", className)}>
+    <div ref={rootRef} className={cn("space-y-4", className)} onPaste={handlePaste}>
       <Input
         ref={fileInputRef}
         id={id}
@@ -123,6 +144,7 @@ export default function FileUploader({
         onChange={handleInputChange}
         accept={acceptedFileTypes}
         className="hidden"
+        {...(capture ? { capture: 'environment' as any } : {})}
       />
       
       {!selectedFile && (
@@ -158,6 +180,9 @@ export default function FileUploader({
               <p className="text-sm text-muted-foreground">
                 {error ? error : `or click to browse (max ${maxSize}MB)`}
               </p>
+              {enablePaste && (
+                <p className="text-xs text-muted-foreground">Tip: You can also paste an image from your clipboard</p>
+              )}
             </div>
             
             <Button variant="outline" size="sm" type="button">
