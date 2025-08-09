@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { FileUp, Upload, AlertCircle } from 'lucide-react';
@@ -16,6 +16,7 @@ interface FileUploaderProps {
   className?: string;
   enablePaste?: boolean;
   capture?: boolean;
+  value?: File | null;
 }
 
 export default function FileUploader({ 
@@ -26,12 +27,27 @@ export default function FileUploader({
   className,
   enablePaste = true,
   capture = false,
+  value,
 }: FileUploaderProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (value === undefined) return;
+    // When controlled value changes, reflect it
+    setSelectedFile(value);
+    if (!value) return;
+    // Basic validation for controlled updates
+    const validationError = validateFile(value);
+    if (validationError) {
+      setError(validationError);
+    } else {
+      setError(null);
+    }
+  }, [value]);
 
   const validateFile = (file: File): string | null => {
     // Check file size
@@ -160,6 +176,8 @@ export default function FileUploader({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={handleClick}
+          role="button"
+          aria-label="Upload file"
         >
           <div className="flex flex-col items-center gap-4">
             <div className={cn(

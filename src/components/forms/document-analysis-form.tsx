@@ -18,7 +18,7 @@ import { handleAnalyzeDocumentAction } from '@/app/actions';
 import type { AnalyzeDocumentOutput } from '@/ai/flows/analyze-document';
 import DocumentAnalysisReport from '@/components/reports/document-analysis-report';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { FileSearch, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { FileSearch, AlertTriangle, CheckCircle2, Images } from 'lucide-react';
 import { useLocalHistory } from '@/hooks/use-local-history';
 
 const documentTypes = [
@@ -121,6 +121,17 @@ export default function DocumentAnalysisForm() {
     setError(null);
   };
 
+  const chooseSample = async () => {
+    try {
+      const res = await fetch('https://placehold.co/1200x800/png');
+      const blob = await res.blob();
+      const file = new File([blob], 'sample-document.png', { type: blob.type });
+      form.setValue('documentFile', file, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+    } catch (e) {
+      toast({ title: 'Failed to load sample', description: 'Please try again.', variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card className="w-full max-w-2xl mx-auto shadow-xl border-2">
@@ -145,7 +156,12 @@ export default function DocumentAnalysisForm() {
                 name="documentFile"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-base font-medium">Document File</FormLabel>
+                    <div className="flex items-center justify-between">
+                      <FormLabel className="text-base font-medium">Document File</FormLabel>
+                      <Button type="button" variant="ghost" size="sm" onClick={chooseSample}>
+                        <Images className="h-4 w-4 mr-1" /> Try sample
+                      </Button>
+                    </div>
                     <FormControl>
                       <FileUploader
                         id="documentFile-analysis"
@@ -153,6 +169,7 @@ export default function DocumentAnalysisForm() {
                         acceptedFileTypes="image/*,.pdf,.doc,.docx,.txt"
                         maxSize={10}
                         className=""
+                        value={field.value ?? null}
                       />
                     </FormControl>
                     <FormMessage />
