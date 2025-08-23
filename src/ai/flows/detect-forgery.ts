@@ -38,6 +38,7 @@ const DetectForgeryOutputSchema = z.object({
     .optional()
     .describe('A list of potential *content forgery techniques* suspected for any document (e.g., "Digital text alteration on Driver\'s License", "Signature lifting on contract"). Include "Poor image quality obscuring *content details* on ID card" or "Severe scan artifact obscuring *content* on utility bill" if applicable, but this alone should not imply *content forgery*.'),
   identifiedOrConfirmedDocumentType: z.string().describe('The document type(s) identified or confirmed by the AI. If a single document type was provided by the user and confirmed, list that. If the user did not provide a type, or if multiple documents are detected in the image, list all identified types (e.g., "Driver\'s License, Utility Bill, Passport", or "Unknown Document Type(s)" if identification is not possible).'),
+  analysisChainOfThought: z.string().describe("A detailed, step-by-step explanation of the AI's reasoning process during the analysis. This should include observations, deductions, and the rationale behind the final conclusion."),
 });
 export type DetectForgeryOutput = z.infer<typeof DetectForgeryOutputSchema>;
 
@@ -82,7 +83,18 @@ Analysis Instructions:
     *   **Angle and Lighting:** Address if angle/lighting introduces distortions or shadows. Explain if these are typical for casual capture or seem to deliberately obscure *content*, and how they affect *content analysis* for each document.
 
 Your goal is to be exceptionally thorough in finding *actual content manipulation* on any document present. Do not dismiss minor *content irregularities*, but clearly differentiate them from benign capture/scan artifacts that DO NOT OBSCURE CONTENT. Articulate the reasons for your assessment very clearly, referencing specific documents when multiple are involved, and always prioritizing the *document's content*.
-Output your findings strictly in JSON format, adhering to the defined schema. Ensure \`identifiedOrConfirmedDocumentType\` accurately reflects all identified document types in the image.
+
+**Chain-of-Thought Analysis:**
+
+Before providing the final JSON output, you must first go through a step-by-step analysis. Articulate your reasoning process clearly in the \`analysisChainOfThought\` field of the output. Here is a template to follow:
+
+1.  **Initial Document Triage**: What is the overall quality of the image? What is the document type (or types)?
+2.  **Layout and Structure Analysis**: Describe the layout of the document(s). Are there any unusual structural elements?
+3.  **Content Extraction and Verification**: What key information can you extract? Are there any inconsistencies in the content?
+4.  **Anomaly and Forgery Search**: What specific anomalies or signs of forgery did you look for? What did you find?
+5.  **Final Conclusion Formulation**: Based on the above steps, how did you arrive at your final conclusion?
+
+Output your findings strictly in JSON format, adhering to the defined schema. Ensure \`identifiedOrConfirmedDocumentType\` accurately reflects all identified document types in the image and that the \`analysisChainOfThought\` field contains your detailed reasoning.
 `,
 });
 

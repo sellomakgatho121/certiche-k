@@ -1,0 +1,5 @@
+Flask
+deepdoctection
+torch
+torchvision
+opencv-python-headless
