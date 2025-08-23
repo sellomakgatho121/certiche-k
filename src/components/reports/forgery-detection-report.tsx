@@ -1,9 +1,12 @@
+'use client';
+
 import type { DetectForgeryOutput } from '@/ai/flows/detect-forgery';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { AlertTriangle, CheckCircle, XCircle, Percent, ListChecks, FileType, Shield, TrendingUp } from 'lucide-react';
+import { AlertTriangle, CheckCircle, XCircle, Percent, ListChecks, FileType, Shield, TrendingUp, Download, Copy, Printer } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ForgeryDetectionReportProps {
   report: DetectForgeryOutput;
@@ -20,6 +23,23 @@ const getConfidenceLevel = (confidence: number) => {
 export default function ForgeryDetectionReport({ report }: ForgeryDetectionReportProps) {
   const confidencePercentage = Math.round(report.confidence * 100);
   const confidenceInfo = getConfidenceLevel(report.confidence);
+
+  const handleDownloadJson = () => {
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'forgery-detection.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopyHeadline = async () => {
+    const text = report.isForged ? 'Potential forgery detected' : 'No clear forgery detected';
+    try { await navigator.clipboard.writeText(text); } catch {}
+  };
+
+  const handlePrint = () => { window.print(); };
 
   return (
     <div className="space-y-6">
@@ -48,6 +68,19 @@ export default function ForgeryDetectionReport({ report }: ForgeryDetectionRepor
           </CardDescription>
         </CardHeader>
       </Card>
+
+      {/* Actions */}
+      <div className="flex flex-wrap gap-2 justify-end">
+        <Button variant="outline" size="sm" onClick={handleCopyHeadline}>
+          <Copy className="h-4 w-4 mr-2" /> Copy Headline
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleDownloadJson}>
+          <Download className="h-4 w-4 mr-2" /> Download JSON
+        </Button>
+        <Button variant="outline" size="sm" onClick={handlePrint}>
+          <Printer className="h-4 w-4 mr-2" /> Print
+        </Button>
+      </div>
 
       {/* Document Information */}
       <Card className="shadow-lg">
@@ -136,34 +169,6 @@ export default function ForgeryDetectionReport({ report }: ForgeryDetectionRepor
                     <p className="text-foreground flex-1">{anomaly}</p>
                   </div>
                   {index < report.anomalies.length - 1 && <Separator className="my-3" />}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Suspected Forgery Techniques */}
-      {report.forgeryTechniquesSuspected && report.forgeryTechniquesSuspected.length > 0 && (
-        <Card className="shadow-lg border-orange-200 bg-orange-50/50 dark:border-orange-800 dark:bg-orange-950/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
-              <AlertTriangle size={24} />
-              Suspected Forgery Techniques
-            </CardTitle>
-            <CardDescription>
-              Potential methods of manipulation identified by our analysis
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {report.forgeryTechniquesSuspected.map((technique, index) => (
-                <div key={index}>
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-orange-100 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800">
-                    <div className="h-2 w-2 rounded-full bg-orange-500 mt-2 flex-shrink-0"></div>
-                    <p className="text-orange-800 dark:text-orange-200 flex-1 font-medium">{technique}</p>
-                  </div>
-                  {index < report.forgeryTechniquesSuspected.length - 1 && <Separator className="my-3" />}
                 </div>
               ))}
             </div>

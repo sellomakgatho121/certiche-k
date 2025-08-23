@@ -1,9 +1,12 @@
+'use client';
+
 import type { AnalyzeDocumentOutput } from '@/ai/flows/analyze-document';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { AlertTriangle, CheckCircle, XCircle, Info, FileType, Shield, Eye } from 'lucide-react';
+import { AlertTriangle, CheckCircle, XCircle, Info, FileType, Shield, Eye, Download, Copy, Printer } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface DocumentAnalysisReportProps {
   report: AnalyzeDocumentOutput;
@@ -41,6 +44,26 @@ export default function DocumentAnalysisReport({ report }: DocumentAnalysisRepor
   const mediumSeverityCount = report.anomalies?.filter(a => a.severity === 'medium').length || 0;
   const lowSeverityCount = report.anomalies?.filter(a => a.severity === 'low').length || 0;
 
+  const handleDownloadJson = () => {
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'document-analysis.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopySummary = async () => {
+    try {
+      await navigator.clipboard.writeText(report.summary);
+    } catch {}
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Card with Overall Status */}
@@ -68,6 +91,19 @@ export default function DocumentAnalysisReport({ report }: DocumentAnalysisRepor
           </CardDescription>
         </CardHeader>
       </Card>
+
+      {/* Actions */}
+      <div className="flex flex-wrap gap-2 justify-end">
+        <Button variant="outline" size="sm" onClick={handleCopySummary}>
+          <Copy className="h-4 w-4 mr-2" /> Copy Summary
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleDownloadJson}>
+          <Download className="h-4 w-4 mr-2" /> Download JSON
+        </Button>
+        <Button variant="outline" size="sm" onClick={handlePrint}>
+          <Printer className="h-4 w-4 mr-2" /> Print
+        </Button>
+      </div>
 
       {/* Document Information */}
       <Card className="shadow-lg">

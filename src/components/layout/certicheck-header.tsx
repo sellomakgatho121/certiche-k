@@ -1,6 +1,7 @@
 import { ShieldCheck, Github, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import ModeToggle from '@/components/shared/mode-toggle';
 
 export default function CertiCheckHeader() {
   return (
@@ -17,7 +18,8 @@ export default function CertiCheckHeader() {
             </div>
           </Link>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <ModeToggle />
             <Button 
               variant="ghost" 
               size="sm" 

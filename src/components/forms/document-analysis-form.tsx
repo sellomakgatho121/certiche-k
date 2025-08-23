@@ -13,12 +13,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import FileUploader from '@/components/shared/file-uploader';
-import { fileToDataUri } from '@/lib/file-utils';
+import { fileToOptimizedDataUri } from '@/lib/file-utils';
 import { handleAnalyzeDocumentAction } from '@/app/actions';
 import type { AnalyzeDocumentOutput } from '@/ai/flows/analyze-document';
 import DocumentAnalysisReport from '@/components/reports/document-analysis-report';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { FileSearch, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { FileSearch, AlertTriangle, CheckCircle2, Images } from 'lucide-react';
+import { useLocalHistory } from '@/hooks/use-local-history';
 
 const documentTypes = [
   "Passport",
@@ -54,6 +55,7 @@ export default function DocumentAnalysisForm() {
   const [analysisResult, setAnalysisResult] = useState<AnalyzeDocumentOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { addHistory } = useLocalHistory();
 
   const form = useForm<DocumentAnalysisFormValues>({
     resolver: zodResolver(formSchema),
@@ -69,7 +71,7 @@ export default function DocumentAnalysisForm() {
     setError(null);
 
     try {
-      const documentDataUri = await fileToDataUri(data.documentFile);
+      const documentDataUri = await fileToOptimizedDataUri(data.documentFile, { maxDimension: 2200, quality: 0.9 });
       
       let documentTypeToSend: string | undefined = undefined;
       if (data.documentType && data.documentType !== AI_IDENTIFY_VALUE) {
@@ -83,6 +85,15 @@ export default function DocumentAnalysisForm() {
       });
       
       setAnalysisResult(result);
+
+      addHistory({
+        kind: 'analysis',
+        createdAt: Date.now(),
+        summary: result.summary,
+        documentType: result.identifiedOrConfirmedDocumentType,
+        statusLabel: result.isAuthentic ? 'Authentic' : 'Flagged',
+        payload: result,
+      });
       
       toast({
         title: "Analysis Complete",
@@ -110,6 +121,17 @@ export default function DocumentAnalysisForm() {
     setError(null);
   };
 
+  const chooseSample = async () => {
+    try {
+      const res = await fetch('https://placehold.co/1200x800/png');
+      const blob = await res.blob();
+      const file = new File([blob], 'sample-document.png', { type: blob.type });
+      form.setValue('documentFile', file, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
+    } catch (e) {
+      toast({ title: 'Failed to load sample', description: 'Please try again.', variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card className="w-full max-w-2xl mx-auto shadow-xl border-2">
@@ -134,13 +156,20 @@ export default function DocumentAnalysisForm() {
                 name="documentFile"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-base font-medium">Document File</FormLabel>
+                    <div className="flex items-center justify-between">
+                      <FormLabel className="text-base font-medium">Document File</FormLabel>
+                      <Button type="button" variant="ghost" size="sm" onClick={chooseSample}>
+                        <Images className="h-4 w-4 mr-1" /> Try sample
+                      </Button>
+                    </div>
                     <FormControl>
                       <FileUploader
                         id="documentFile-analysis"
                         onFileSelect={(file) => field.onChange(file)}
                         acceptedFileTypes="image/*,.pdf,.doc,.docx,.txt"
                         maxSize={10}
+                        className=""
+                        value={field.value ?? null}
                       />
                     </FormControl>
                     <FormMessage />

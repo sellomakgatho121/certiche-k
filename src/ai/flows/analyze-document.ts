@@ -34,7 +34,8 @@ const AnalyzeDocumentOutputSchema = z.object({
   isAuthentic: z.boolean().describe('A boolean indicating whether the document (or set of documents) is likely authentic. This should be false if significant anomalies are found *in the content* of any of the documents OR if analysis of critical *content* is severely hindered by image quality or *obscuring scan artifacts*, making verification impossible (state this reason clearly in summary). Benign scan artifacts that do not obscure content should NOT lead to `isAuthentic = false`.'),
   anomalies: z.array(AnomalySchema).describe('A list of anomalies detected in the document(s). Even if the document(s) are deemed authentic, list any minor irregularities or benign scan artifacts (as low severity if they don\'t obscure content). If multiple documents are present, ensure anomalies clearly state which document they pertain to.'),
   summary: z.string().describe('A concise summary of the analysis, highlighting key findings for each document if multiple are present, overall authenticity assessment, and crucially, any limitations due to image quality or *obscuring scan artifacts* impacting *content verification*. Explicitly state if low quality or severe artifacts prevent full *content verification* rather than implying content forgery.'),
-  identifiedOrConfirmedDocumentType: z.string().describe('The document type(s) identified or confirmed by the AI. If a single document type was provided by the user and confirmed, list that. If the user did not provide a type, or if multiple documents are detected in the image, list all identified types (e.g., "Driver\'s License, Utility Bill, Passport", or "Unknown Document Type" if identification is not possible).'),
+  identifiedOrConfirmedDocumentType: z.string().describe('The document type(s) identified or confirmed by the AI. If a single document type was provided by the user and confirmed, list that. If the user did not provide a type, or if a multiple documents are detected in the image, list all identified types (e.g., "Driver\'s License, Utility Bill, Passport", or "Unknown Document Type" if identification is not possible).'),
+  analysisChainOfThought: z.string().describe("A detailed, step-by-step explanation of the AI's reasoning process during the analysis. This should include observations, deductions, and the rationale behind the final conclusion."),
 });
 export type AnalyzeDocumentOutput = z.infer<typeof AnalyzeDocumentOutputSchema>;
 
@@ -94,7 +95,18 @@ const prompt = ai.definePrompt({
   10. **Summary (Address All Documents and Content Focus):** Provide a concise summary. If multiple documents were analyzed, briefly summarize *content findings* for each. Highlight critical *content observations*, your overall authenticity conclusion (considering all \`identifiedOrConfirmedDocumentType\`s), and explicitly mention limitations regarding *content verification* due to image quality or **severe, obscuring scan artifacts**. If authenticity of any document's *content* cannot be confirmed due to quality or obstruction, state this clearly.
 
   Even if documents seem legitimate, find any indication of *content manipulation*. Maintain a critical mindset but differentiate clearly between capture artifacts (especially scan artifacts that don't obscure content) and deliberate *content forgery* for each document.
-  Output in JSON format. Ensure \`identifiedOrConfirmedDocumentType\` accurately reflects all identified document types in the image.`,
+
+  **Chain-of-Thought Analysis:**
+
+  Before providing the final JSON output, you must first go through a step-by-step analysis. Articulate your reasoning process clearly in the \`analysisChainOfThought\` field of the output. Here is a template to follow:
+
+  1.  **Initial Document Triage**: What is the overall quality of the image? What is the document type (or types)?
+  2.  **Layout and Structure Analysis**: Describe the layout of the document(s). Are there any unusual structural elements?
+  3.  **Content Extraction and Verification**: What key information can you extract? Are there any inconsistencies in the content?
+  4.  **Anomaly and Forgery Search**: What specific anomalies or signs of forgery did you look for? What did you find?
+  5.  **Final Conclusion Formulation**: Based on the above steps, how did you arrive at your final conclusion?
+
+  Output in JSON format. Ensure \`identifiedOrConfirmedDocumentType\` accurately reflects all identified document types in the image and that the \`analysisChainOfThought\` field contains your detailed reasoning.`,
 });
 
 const analyzeDocumentFlow = ai.defineFlow(

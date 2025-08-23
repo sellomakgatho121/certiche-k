@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import DocumentAnalysisForm from "@/components/forms/document-analysis-form";
 import ForgeryDetectionForm from "@/components/forms/forgery-detection-form";
 import { FileSearch, ScanEye, Shield, CheckCircle, AlertTriangle } from "lucide-react";
+import RecentHistory from "@/components/shared/recent-history";
 
 export default function HomePage() {
   return (
@@ -111,6 +112,11 @@ export default function HomePage() {
           <ForgeryDetectionForm />
         </TabsContent>
       </Tabs>
+
+      {/* Recent History */}
+      <div className="mt-12">
+        <RecentHistory />
+      </div>
 
       {/* Security Notice */}
       <Card className="mt-12 border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
